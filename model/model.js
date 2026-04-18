@@ -5,22 +5,33 @@ const productSchema = new Schema({
     name: {
         type: String,
         required: true,
-        trim: true, // Remove whitespace around the name
+        trim: true,
     },
     description: {
         type: String,
         required: true,
         trim: true,
     },
+    price: {
+        type: Number,
+        required: true,
+        min: 0, // Price can't be negative
+    },
+    slug: {
+        type: String,
+        unique: true, // Each slug must be unique
+        trim: true,
+        lowercase: true,
+    },
     images: {
-        type: [String], // Array of image URLs
+        type: [String],
         validate: {
             validator: function (value) {
-                return value.length > 0; // Ensure at least one image URL is provided
+                return value.length > 0;
             },
             message: 'At least one image URL is required',
         },
-        required: true, // The field itself is required
+        required: true,
     },
     category: {
         type: String,
@@ -29,8 +40,22 @@ const productSchema = new Schema({
     },
     createdAt: {
         type: Date,
-        default: Date.now, // Automatically set creation date
+        default: Date.now,
     },
+});
+
+// Auto-generate slug from name before saving
+productSchema.pre('save', function(next) {
+    if (this.isModified('name')) {
+        this.slug = this.name
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, '') // Remove special chars
+            .replace(/\s+/g, '-');    // Replace spaces with hyphens
+        
+        // Add random number to ensure uniqueness
+        this.slug += '-' + Math.random().toString(36).substring(2, 7);
+    }
+    next();
 });
 
 module.exports = mongoose.model('Product', productSchema);

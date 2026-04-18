@@ -1,3 +1,6 @@
+const dns = require('dns');
+dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
+
 const express = require('express');
 require('colors'); // Fixed typo: 'colour' -> 'colors'
 const cors = require('cors');
@@ -37,33 +40,20 @@ app.get('/', (req, res) =>{
 
 app.post('/upload', async (req, res) => {
     try {
-        const { name, description, category, images } = req.body;
+        const { name, description, category, price, images } = req.body;
 
-        // Check for required fields
-        if (!name || !description || !category) {
-            return res.status(400).json({ message: 'Please fill in all required fields' });
-        }
+        // 🔹 Single validation check
+        const missing = ['name', 'description', 'category', 'price'].find(f => !req.body[f]);
+        if (missing) return res.status(400).json({ message: `${missing} is required` });
+        if (!images?.[0]) return res.status(400).json({ message: 'At least one image URL is required' });
 
-        // Ensure at least one image URL is provided
-        if (!images || !images[0]) {
-            return res.status(400).json({ message: 'At least one image URL is required.' });
-        }
+        // 🔹 Create & save in one line
+        const product = await Product.create({ name, description, category, price, images });
 
-        // Create new Product instance
-        const newProduct = new Product({
-            name,
-            description,
-            category,
-            images, // Save the array of image URLs
-        });
-
-        // Save the new product
-        await newProduct.save();
-
-        res.json({ message: 'Product uploaded successfully!', product: newProduct });
+        res.status(201).json({ message: 'Product uploaded successfully!', product });
     } catch (error) {
-        console.error('Error uploading product:', error);
-        res.status(500).json({ message: 'Error uploading product' });
+        console.error('Upload error:', error);
+        res.status(500).json({ message: 'Failed to upload product' });
     }
 });
 
