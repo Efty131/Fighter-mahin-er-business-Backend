@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login • Torit Shop</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="glass-panel">
+    <h2>Welcome Back</h2>
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" name="email" placeholder="name@example.com" required>
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btn">Login</button>
+    </form>
+    <div class="link-text">
+      Don't have an account? <a href="/register">Register here</a>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const res = await fetch('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: e.target.email.value,
+          password: e.target.password.value
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        // Redirect to upload page on success
+        window.location.href = '/';
+      } else {
+        alert('❌ ' + data.message);
+      }
+    });
+  </script>
+</body>
+</html>
