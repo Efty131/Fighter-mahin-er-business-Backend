@@ -13,6 +13,9 @@ require('dotenv').config();
 // ✅ NEW: Cookie parser & auth routes
 const cookieParser = require('cookie-parser');
 const authRoutes = require('./Routes/auth');
+const courseRoutes = require('./Routes/courseRoutes');
+const orderRoutes = require('./Routes/orderRoutes');
+const enrollmentRoutes = require('./Routes/enrollmentRoutes');
 const { protect, adminOnly } = require('./middleware/authMiddleware');
 
 const app = express();
@@ -41,6 +44,15 @@ app.get('/register', (req, res) => {
 
 // Product API routes
 app.use("/api/products", router);
+
+// Course API routes
+app.use("/api/courses", courseRoutes);
+
+// Order API routes
+app.use("/api/orders", orderRoutes);
+
+// Enrollment API routes
+app.use("/api/enrollments", enrollmentRoutes);
 
 // Serve upload form (✅ Removed duplicate route)
 app.get('/', (req, res) => {
