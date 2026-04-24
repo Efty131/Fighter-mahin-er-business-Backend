@@ -33,7 +33,8 @@ const corsOptions = {
     const allowedOrigins = [
       'http://localhost:5173',           // Vite dev server (default)
       'http://127.0.0.1:5173',           // Alternative Vite dev
-      'http://localhost:4002',           // Local backend direct access
+      'http://localhost:4002',
+      'https://big-time-frontend.vercel.app/'           // Local backend direct access
       'https://fighter-mahin-er-business-backend.onrender.com', // Your Render backend URL
       // ✅ ADD YOUR PRODUCTION FRONTEND DOMAIN HERE WHEN DEPLOYED:
       // 'https://your-frontend-domain.com',
