@@ -19,11 +19,18 @@ router.post('/register', async (req, res) => {
     // Generate JWT
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-    // Store in secure cookie
-    res.cookie('token', token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
+    // 🔥 Store in secure cookie - FIXED for cross-origin HTTPS
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',  // ✅ true on Vercel/Render (HTTPS)
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // ✅ 'none' for cross-origin
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/'
+    });
     
     res.status(201).json({ message: 'Registration successful', user: { id: user._id, name: user.name, role: user.role } });
   } catch (err) {
+    console.error('Registration error:', err);
     res.status(500).json({ message: 'Registration failed', error: err.message });
   }
 });
@@ -39,17 +46,31 @@ router.post('/login', async (req, res) => {
     }
 
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.cookie('token', token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
+    
+    // 🔥 Store in secure cookie - FIXED for cross-origin HTTPS
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',  // ✅ true on Vercel/Render (HTTPS)
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // ✅ 'none' for cross-origin
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/'
+    });
     
     res.json({ message: 'Login successful', user: { id: user._id, name: user.name, role: user.role } });
   } catch (err) {
+    console.error('Login error:', err);
     res.status(500).json({ message: 'Login failed', error: err.message });
   }
 });
 
 // ✅ Logout
 router.get('/logout', (req, res) => {
-  res.clearCookie('token');
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    path: '/'
+  });
   res.json({ message: 'Logged out successfully' });
 });
 
