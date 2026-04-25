@@ -7,6 +7,20 @@ const orderSchema = new Schema({
         ref: 'User',
         required: true,
     },
+    shippingAddress: {
+        fullName:   { type: String, required: true },
+        email:      { type: String, required: true },
+        mobile:     { type: String, required: true },
+        address:    { type: String, required: true },
+        city:       { type: String, required: true },
+        postalCode: { type: String },
+        country:    { type: String, required: true },
+    },
+    orderStatus: {
+        type: String,
+        enum: ['processing', 'shipped', 'delivered', 'cancelled'],
+        default: 'processing',
+    },
     items: [
         {
             itemType: {
