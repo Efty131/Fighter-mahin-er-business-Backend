@@ -1,4 +1,13 @@
-// 🚨 DNS Fix - Keep this at the very top
+require('dotenv').config(); // ← must be first, before everything else
+
+// Verify Cloudinary env vars loaded (safe to log key names, not values)
+console.log('🔧 Env check:', {
+  cloudName: process.env.CLOUDINARY_CLOUD_NAME  || 'MISSING',
+  apiKey:    process.env.CLOUDINARY_API_KEY     ? '***set***' : 'MISSING',
+  apiSecret: process.env.CLOUDINARY_API_SECRET  ? '***set***' : 'MISSING',
+});
+
+// 🚨 DNS Fix
 const dns = require('dns');
 dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
 
@@ -8,7 +17,6 @@ const cors = require('cors');
 const connectDB = require('./config/config');
 const router = require('./Routes/route');
 const Product = require('./model/model');
-require('dotenv').config();
 
 // ✅ Cookie parser & auth routes
 const cookieParser = require('cookie-parser');
@@ -25,6 +33,9 @@ const port = process.env.PORT || 4002;
 
 // MongoDB connection
 connectDB();
+
+// ☁️ Cloudinary — must run after dotenv is loaded
+require('./config/cloudinary');
 
 // 🔥 CORS Configuration - FIXED for HTTP-only cookies + credentials
 const corsOptions = {
