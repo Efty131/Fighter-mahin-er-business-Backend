@@ -24,14 +24,22 @@ const productSchema = new Schema({
         lowercase: true,
     },
     images: {
-        type: [String],
-        validate: {
-            validator: function (value) {
-                return value.length > 0;
+        type: [
+            {
+                url:      { type: String, required: true },
+                publicId: { type: String, default: '' },
+                alt:      { type: String, default: '' },
             },
-            message: 'At least one image URL is required',
+        ],
+        validate: {
+            validator: (v) => v.length > 0,
+            message: 'At least one image is required',
         },
         required: true,
+    },
+    thumbnail: {
+        url:      { type: String, default: '' },
+        publicId: { type: String, default: '' },
     },
     category: {
         type: String,

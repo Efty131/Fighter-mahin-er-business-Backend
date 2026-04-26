@@ -17,13 +17,17 @@ const courseSchema = new Schema({
         min: 0,
     },
     thumbnail: {
-        type: String,
-        required: true,
+        url:      { type: String, default: '' },
+        publicId: { type: String, default: '' },
     },
-    videoUrls: {
-        type: [String], 
-        default: [],
-    },
+    videos: [
+        {
+            url:      { type: String, required: true },
+            publicId: { type: String, required: true },
+            title:    { type: String, default: '' },
+            duration: { type: Number, default: 0 }, // seconds
+        },
+    ],
     instructor: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

@@ -6,6 +6,10 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, lowercase: true },
   password: { type: String, required: true, minlength: 6 },
   role: { type: String, enum: ['user', 'admin', 'instructor'], default: 'user' },
+  avatar: {
+    url:      { type: String, default: '' },
+    publicId: { type: String, default: '' },
+  },
   createdAt: { type: Date, default: Date.now }
 });
 

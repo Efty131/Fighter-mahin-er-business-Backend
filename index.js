@@ -17,6 +17,7 @@ const courseRoutes = require('./Routes/courseRoutes');
 const orderRoutes = require('./Routes/orderRoutes');
 const enrollmentRoutes = require('./Routes/enrollmentRoutes');
 const articleRoutes    = require('./Routes/articleRoutes');
+const uploadRoutes     = require('./Routes/uploadRoutes');
 const { protect, adminOnly } = require('./middleware/authMiddleware');
 
 const app = express();
@@ -92,6 +93,9 @@ app.use("/api/enrollments", enrollmentRoutes);
 
 // ✅ Article/Blog API routes
 app.use("/api/articles", articleRoutes);
+
+// ✅ Upload API routes (Cloudinary)
+app.use("/api/upload", uploadRoutes);
 
 // ✅ Serve upload form
 app.get('/', (req, res) => {
