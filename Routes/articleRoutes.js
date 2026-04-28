@@ -4,6 +4,7 @@ const {
     createArticle,
     getArticles,
     getArticleBySlug,
+    getCategories,
     toggleLike,
     updateArticle,
     deleteArticle,
@@ -32,15 +33,25 @@ const likeLimiter = (req, res, next) => {
 };
 
 // ── Public ────────────────────────────────────────────────────────────────────
-router.get('/',          getArticles);        // paginated published list
-router.get('/:slug',     getArticleBySlug);   // single article by slug  ← before /:id
+// GET /api/articles                          — paginated published list
+//   ?page=1 &limit=10
+//   ?category=politics                       — filter by slug or English name
+//   ?category=রাজনীতি                        — filter by Bangla name
+//   ?search=keyword                          — search title, excerpt, category
+router.get('/',              getArticles);
+
+// GET /api/articles/categories               — all distinct categories with counts
+router.get('/categories',    getCategories);   // ← must be before /:slug
+
+// GET /api/articles/:slug                    — single article by slug
+router.get('/:slug',         getArticleBySlug);
 
 // ── Authenticated users ───────────────────────────────────────────────────────
-router.post('/:id/like', protect, likeLimiter, toggleLike);
+router.post('/:id/like',     protect, likeLimiter, toggleLike);
 
 // ── Admin only ────────────────────────────────────────────────────────────────
-router.post('/',         protect, adminOnly, createArticle);
-router.put('/:id',       protect, adminOnly, updateArticle);
-router.delete('/:id',    protect, adminOnly, deleteArticle);
+router.post('/',             protect, adminOnly, createArticle);
+router.put('/:id',           protect, adminOnly, updateArticle);
+router.delete('/:id',        protect, adminOnly, deleteArticle);
 
 module.exports = router;

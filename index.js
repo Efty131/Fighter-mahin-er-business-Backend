@@ -25,6 +25,7 @@ const courseRoutes = require('./Routes/courseRoutes');
 const orderRoutes = require('./Routes/orderRoutes');
 const enrollmentRoutes = require('./Routes/enrollmentRoutes');
 const articleRoutes    = require('./Routes/articleRoutes');
+const newsRoutes       = require('./Routes/newsRoutes');
 const uploadRoutes     = require('./Routes/uploadRoutes');
 const { protect, adminOnly } = require('./middleware/authMiddleware');
 
@@ -102,8 +103,11 @@ app.use("/api/orders", orderRoutes);
 // ✅ Enrollment API routes
 app.use("/api/enrollments", enrollmentRoutes);
 
-// ✅ Article/Blog API routes
+// ✅ Article/Blog API routes (Substack articles)
 app.use("/api/articles", articleRoutes);
+
+// ✅ News API routes (separate collection + Cloudinary folder: news/images)
+app.use("/api/news", newsRoutes);
 
 // ✅ Upload API routes (Cloudinary)
 app.use("/api/upload", uploadRoutes);

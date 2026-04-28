@@ -1,10 +1,11 @@
-const Article = require('../model/Article');
+const News = require('../model/News');
+const { uploadImage, deleteFromCloudinary } = require('../utils/cloudinaryUpload');
+
+// ── Cloudinary folder for news (separate from articles/courses) ───────────────
+const NEWS_IMAGE_FOLDER = 'news/images';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const sanitize = (str) => str.replace(/<[^>]*>/g, '').trim();
-
-const isValidSubstackUrl = (url) =>
-    /^https:\/\/([\w-]+\.)?substack\.com\/.+/.test(url);
 
 const toSlug = (text) =>
     text.toString().toLowerCase().trim()
@@ -12,18 +13,17 @@ const toSlug = (text) =>
         .replace(/\s+/g, '-')
         .replace(/-+/g, '-');
 
-// Parse and validate category from request body
-// Accepts: { bn, en } object
-const parseCategory = (categoryInput) => {
-    if (!categoryInput) return null;
-
-    let cat = categoryInput;
+/**
+ * Parse category from request body.
+ * Accepts JSON string or plain object with { bn, en }.
+ */
+const parseCategory = (input) => {
+    if (!input) return null;
+    let cat = input;
     if (typeof cat === 'string') {
         try { cat = JSON.parse(cat); } catch { return null; }
     }
-
     if (!cat.bn || !cat.en) return null;
-
     return {
         bn:    sanitize(cat.bn),
         en:    sanitize(cat.en).toLowerCase(),
@@ -33,29 +33,17 @@ const parseCategory = (categoryInput) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /api/articles  — Admin: create article
+// POST /api/news  — Admin: create news article (with optional cover image)
 // ─────────────────────────────────────────────────────────────────────────────
-const createArticle = async (req, res) => {
+const createNews = async (req, res) => {
     try {
-        const { title, excerpt, substackUrl, content, status, category } = req.body;
+        const { title, excerpt, content, status, category, source, sourceUrl, isFeatured } = req.body;
 
-        if (!title || !excerpt || !substackUrl) {
-            return res.status(400).json({
-                success: false,
-                message: 'title, excerpt, and substackUrl are required',
-            });
+        if (!title || !excerpt) {
+            return res.status(400).json({ success: false, message: 'title and excerpt are required' });
         }
-        if (!isValidSubstackUrl(substackUrl)) {
-            return res.status(400).json({
-                success: false,
-                message: 'substackUrl must be a valid Substack URL (https://substack.com/...)',
-            });
-        }
-        if (excerpt.length > 300) {
-            return res.status(400).json({
-                success: false,
-                message: 'excerpt cannot exceed 300 characters',
-            });
+        if (excerpt.length > 500) {
+            return res.status(400).json({ success: false, message: 'excerpt cannot exceed 500 characters' });
         }
 
         const parsedCategory = parseCategory(category);
@@ -66,42 +54,54 @@ const createArticle = async (req, res) => {
             });
         }
 
-        const article = new Article({
-            title:       sanitize(title),
-            excerpt:     sanitize(excerpt),
-            substackUrl: substackUrl.trim(),
-            content:     content ? sanitize(content) : '',
-            status:      status || 'draft',
-            author:      req.user._id,
-            category:    parsedCategory,
+        // Upload cover image to Cloudinary news folder if provided
+        let coverImage = { url: '', publicId: '' };
+        if (req.file) {
+            const result = await uploadImage(req.file, NEWS_IMAGE_FOLDER);
+            coverImage = { url: result.url, publicId: result.publicId };
+        }
+
+        const news = new News({
+            title:      sanitize(title),
+            excerpt:    sanitize(excerpt),
+            content:    content ? sanitize(content) : '',
+            status:     status || 'draft',
+            category:   parsedCategory,
+            coverImage,
+            source:     source     ? sanitize(source)    : '',
+            sourceUrl:  sourceUrl  ? sourceUrl.trim()    : '',
+            isFeatured: isFeatured === 'true' || isFeatured === true,
+            author:     req.user._id,
         });
 
-        const saved = await article.save();
-
-        res.status(201).json({ success: true, data: saved, message: 'Article created' });
+        const saved = await news.save();
+        res.status(201).json({ success: true, data: saved, message: 'News article created' });
     } catch (error) {
         if (error.code === 11000) {
             return res.status(409).json({ success: false, message: 'Slug conflict — try a slightly different title' });
         }
-        res.status(500).json({ success: false, message: 'Failed to create article', error: error.message });
+        res.status(500).json({ success: false, message: 'Failed to create news', error: error.message });
     }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/articles  — Public: published articles, paginated
-// Supports: ?page, ?limit, ?category (slug, en, or bn), ?search
+// GET /api/news  — Public: published news, paginated
+// ?page, ?limit, ?category (slug/en/bn), ?search, ?featured
 // ─────────────────────────────────────────────────────────────────────────────
-const getArticles = async (req, res) => {
+const getNews = async (req, res) => {
     try {
         const page     = Math.max(1, parseInt(req.query.page)  || 1);
         const limit    = Math.min(50, parseInt(req.query.limit) || 10);
         const skip     = (page - 1) * limit;
         const category = req.query.category;
         const search   = req.query.search;
+        const featured = req.query.featured;
 
         const filter = { status: 'published' };
 
-        // Filter by category — matches slug, English name, or Bangla name
+        if (featured === 'true') filter.isFeatured = true;
+
+        // Filter by category — slug, English, or Bangla
         if (category) {
             const term = category.trim().toLowerCase();
             filter.$or = [
@@ -111,7 +111,7 @@ const getArticles = async (req, res) => {
             ];
         }
 
-        // Full-text search across title, excerpt, and category fields
+        // Full-text search
         if (search) {
             const regex = { $regex: search, $options: 'i' };
             const searchConditions = [
@@ -119,7 +119,6 @@ const getArticles = async (req, res) => {
                 { excerpt:         regex },
                 { 'category.bn':   regex },
                 { 'category.en':   regex },
-                { 'category.slug': regex },
             ];
             filter.$or = filter.$or
                 ? [{ $and: [{ $or: filter.$or }, { $or: searchConditions }] }]
@@ -127,39 +126,34 @@ const getArticles = async (req, res) => {
         }
 
         const [articles, total] = await Promise.all([
-            Article.find(filter)
+            News.find(filter)
                 .select('-content -__v')
                 .populate('author', 'name')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit)
                 .lean(),
-            Article.countDocuments(filter),
+            News.countDocuments(filter),
         ]);
 
         res.status(200).json({
             success: true,
             data: {
                 articles,
-                pagination: {
-                    total,
-                    page,
-                    limit,
-                    totalPages: Math.ceil(total / limit),
-                },
+                pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
             },
         });
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Failed to fetch articles', error: error.message });
+        res.status(500).json({ success: false, message: 'Failed to fetch news', error: error.message });
     }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/articles/categories  — Public: list all distinct categories
+// GET /api/news/categories  — Public: distinct news categories with counts
 // ─────────────────────────────────────────────────────────────────────────────
-const getCategories = async (req, res) => {
+const getNewsCategories = async (req, res) => {
     try {
-        const categories = await Article.aggregate([
+        const categories = await News.aggregate([
             { $match: { status: 'published', category: { $exists: true } } },
             {
                 $group: {
@@ -192,79 +186,51 @@ const getCategories = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/articles/:slug  — Public: single published article
+// GET /api/news/:slug  — Public: single published news article + increment views
 // ─────────────────────────────────────────────────────────────────────────────
-const getArticleBySlug = async (req, res) => {
+const getNewsBySlug = async (req, res) => {
     try {
-        const article = await Article.findOne({ slug: req.params.slug, status: 'published' })
+        const news = await News.findOneAndUpdate(
+            { slug: req.params.slug, status: 'published' },
+            { $inc: { views: 1 } },
+            { new: true }
+        )
             .populate('author', 'name')
             .lean({ virtuals: true });
 
-        if (!article) {
-            return res.status(404).json({ success: false, message: 'Article not found' });
+        if (!news) {
+            return res.status(404).json({ success: false, message: 'News article not found' });
         }
 
-        res.status(200).json({ success: true, data: article });
+        res.status(200).json({ success: true, data: news });
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Failed to fetch article', error: error.message });
+        res.status(500).json({ success: false, message: 'Failed to fetch news article', error: error.message });
     }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /api/articles/:id/like  — Auth: toggle like
+// PUT /api/news/:id  — Admin: update news article
 // ─────────────────────────────────────────────────────────────────────────────
-const toggleLike = async (req, res) => {
+const updateNews = async (req, res) => {
     try {
-        const article = await Article.findById(req.params.id).select('likes');
-        if (!article) {
-            return res.status(404).json({ success: false, message: 'Article not found' });
+        const news = await News.findById(req.params.id);
+        if (!news) {
+            return res.status(404).json({ success: false, message: 'News article not found' });
         }
 
-        const userId   = req.user._id;
-        const hasLiked = article.likes.some((id) => id.equals(userId));
+        const { title, excerpt, content, status, category, source, sourceUrl, isFeatured } = req.body;
 
-        const updated = await Article.findByIdAndUpdate(
-            req.params.id,
-            hasLiked
-                ? { $pull:     { likes: userId } }
-                : { $addToSet: { likes: userId } },
-            { new: true, select: 'likes' }
-        );
-
-        res.status(200).json({
-            success: true,
-            data:    { liked: !hasLiked, likeCount: updated.likes.length },
-            message: hasLiked ? 'Like removed' : 'Article liked',
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Failed to toggle like', error: error.message });
-    }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// PUT /api/articles/:id  — Admin: update article
-// ─────────────────────────────────────────────────────────────────────────────
-const updateArticle = async (req, res) => {
-    try {
-        const article = await Article.findById(req.params.id);
-        if (!article) {
-            return res.status(404).json({ success: false, message: 'Article not found' });
+        if (excerpt && excerpt.length > 500) {
+            return res.status(400).json({ success: false, message: 'Excerpt cannot exceed 500 characters' });
         }
 
-        const { title, excerpt, substackUrl, content, status, category } = req.body;
-
-        if (substackUrl && !isValidSubstackUrl(substackUrl)) {
-            return res.status(400).json({ success: false, message: 'Invalid Substack URL' });
-        }
-        if (excerpt && excerpt.length > 300) {
-            return res.status(400).json({ success: false, message: 'Excerpt cannot exceed 300 characters' });
-        }
-
-        if (title)       article.title       = sanitize(title);
-        if (excerpt)     article.excerpt     = sanitize(excerpt);
-        if (substackUrl) article.substackUrl = substackUrl.trim();
-        if (content)     article.content     = sanitize(content);
-        if (status)      article.status      = status;
+        if (title)      news.title      = sanitize(title);
+        if (excerpt)    news.excerpt    = sanitize(excerpt);
+        if (content)    news.content    = sanitize(content);
+        if (status)     news.status     = status;
+        if (source)     news.source     = sanitize(source);
+        if (sourceUrl)  news.sourceUrl  = sourceUrl.trim();
+        if (isFeatured !== undefined) news.isFeatured = isFeatured === 'true' || isFeatured === true;
 
         if (category) {
             const parsedCategory = parseCategory(category);
@@ -274,41 +240,55 @@ const updateArticle = async (req, res) => {
                     message: 'category must include both bn (Bangla) and en (English) fields',
                 });
             }
-            article.category = parsedCategory;
+            news.category = parsedCategory;
         }
 
-        const saved = await article.save();
+        // Replace cover image if a new file is uploaded
+        if (req.file) {
+            // Delete old image from Cloudinary
+            if (news.coverImage?.publicId) {
+                await deleteFromCloudinary(news.coverImage.publicId, 'image').catch(() => {});
+            }
+            const result = await uploadImage(req.file, NEWS_IMAGE_FOLDER);
+            news.coverImage = { url: result.url, publicId: result.publicId };
+        }
 
-        res.status(200).json({ success: true, data: saved, message: 'Article updated' });
+        const saved = await news.save();
+        res.status(200).json({ success: true, data: saved, message: 'News article updated' });
     } catch (error) {
         if (error.code === 11000) {
             return res.status(409).json({ success: false, message: 'Slug conflict — try a slightly different title' });
         }
-        res.status(500).json({ success: false, message: 'Failed to update article', error: error.message });
+        res.status(500).json({ success: false, message: 'Failed to update news', error: error.message });
     }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DELETE /api/articles/:id  — Admin: hard delete
+// DELETE /api/news/:id  — Admin: delete news + remove Cloudinary image
 // ─────────────────────────────────────────────────────────────────────────────
-const deleteArticle = async (req, res) => {
+const deleteNews = async (req, res) => {
     try {
-        const article = await Article.findByIdAndDelete(req.params.id);
-        if (!article) {
-            return res.status(404).json({ success: false, message: 'Article not found' });
+        const news = await News.findByIdAndDelete(req.params.id);
+        if (!news) {
+            return res.status(404).json({ success: false, message: 'News article not found' });
         }
-        res.status(200).json({ success: true, message: 'Article deleted' });
+
+        // Clean up Cloudinary image
+        if (news.coverImage?.publicId) {
+            await deleteFromCloudinary(news.coverImage.publicId, 'image').catch(() => {});
+        }
+
+        res.status(200).json({ success: true, message: 'News article deleted' });
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Failed to delete article', error: error.message });
+        res.status(500).json({ success: false, message: 'Failed to delete news', error: error.message });
     }
 };
 
 module.exports = {
-    createArticle,
-    getArticles,
-    getArticleBySlug,
-    getCategories,
-    toggleLike,
-    updateArticle,
-    deleteArticle,
+    createNews,
+    getNews,
+    getNewsCategories,
+    getNewsBySlug,
+    updateNews,
+    deleteNews,
 };

@@ -112,11 +112,47 @@ Cookies are HTTP-only. All protected routes require a valid session cookie set a
 | Method | Route | Access | Description |
 |--------|-------|--------|-------------|
 | `GET` | `/api/articles` | Public | Get paginated list of published articles |
+| `GET` | `/api/articles/categories` | Public | List all distinct categories with article counts |
 | `GET` | `/api/articles/:slug` | Public | Get single article by slug |
 | `POST` | `/api/articles/:id/like` | Auth | Toggle like on an article (rate limited: 3/min) |
 | `POST` | `/api/articles` | Admin | Create a new article |
 | `PUT` | `/api/articles/:id` | Admin | Update an article |
 | `DELETE` | `/api/articles/:id` | Admin | Delete an article |
+
+### Article query parameters
+
+| Param | Example | Description |
+|-------|---------|-------------|
+| `page` | `?page=2` | Page number (default: 1) |
+| `limit` | `?limit=20` | Results per page (max: 50, default: 10) |
+| `category` | `?category=politics` | Filter by category slug or English name |
+| `category` | `?category=রাজনীতি` | Filter by Bangla category name |
+| `search` | `?search=election` | Search title, excerpt, and category (both languages) |
+
+### Dual-language category format
+
+Categories store both Bangla and English names. The `category` field in create/update requests must be a JSON object:
+
+```json
+{
+  "category": {
+    "bn": "রাজনীতি",
+    "en": "Politics"
+  }
+}
+```
+
+The `slug` and `class` fields are auto-generated from the English name. Responses include a `categoryDisplay` virtual: `"রাজনীতি (Politics)"`.
+
+#### Built-in category examples
+
+| Display | `bn` | `en` | `slug` |
+|---------|------|------|--------|
+| রাজনীতি (Politics) | রাজনীতি | politics | politics |
+| খেলা (Sports) | খেলা | sports | sports |
+| প্রযুক্তি (Technology) | প্রযুক্তি | technology | technology |
+| বিনোদন (Entertainment) | বিনোদন | entertainment | entertainment |
+| আন্তর্জাতিক (International) | আন্তর্জাতিক | international | international |
 
 ---
 
