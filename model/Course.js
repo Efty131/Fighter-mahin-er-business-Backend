@@ -2,14 +2,27 @@ const mongoose = require('mongoose');
 
 const videoSchema = new mongoose.Schema(
   {
-    title:    { type: String, default: '', trim: true },
-    publicId: { type: String, required: true },
-    url:      { type: String, required: true }, // Cloudinary URL
-    duration: { type: Number, default: 0 },     // seconds
-    order:    { type: Number, default: 0 },
+    publicId:    { type: String, required: true },
+    url:         { type: String, required: true },
+    title:       { type: String, trim: true, default: '' },
+    description: { type: String, trim: true, default: '' },
+    customThumbnail: {
+      url:      { type: String, default: '' },
+      publicId: { type: String, default: '' },
+    },
+    duration:    { type: Number, default: 0 },   // seconds
+    order:       { type: Number, default: 0 },
+    isFree:      { type: Boolean, default: false },
+    isPublished: { type: Boolean, default: true },
   },
   { _id: true }
 );
+
+// Returns custom thumbnail if set, otherwise falls back to Cloudinary auto-generated frame
+videoSchema.methods.getThumbnail = function () {
+  if (this.customThumbnail?.url) return this.customThumbnail.url;
+  return this.url.replace('/upload/', '/upload/so_0,w_640/');
+};
 
 const courseSchema = new mongoose.Schema(
   {
@@ -24,8 +37,8 @@ const courseSchema = new mongoose.Schema(
     },
     videos: [videoSchema],
     instructor: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref:  'User',
+      type:     mongoose.Schema.Types.ObjectId,
+      ref:      'User',
       required: true,
     },
     status: {
