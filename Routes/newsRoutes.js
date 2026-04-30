@@ -16,7 +16,7 @@ const { uploadImage } = require('../middleware/uploadMiddleware');
 //   ?page=1 &limit=10
 //   ?category=politics                   — filter by slug or English name
 //   ?category=রাজনীতি                    — filter by Bangla name
-//   ?search=keyword                      — search title, excerpt, category
+//   ?search=keyword                      — search title, tags, category
 //   ?featured=true                       — featured news only
 router.get('/',           getNews);
 

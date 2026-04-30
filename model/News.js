@@ -34,11 +34,9 @@ const newsSchema = new mongoose.Schema(
             required: [true, 'Title is required'],
             trim: true,
         },
-        excerpt: {
-            type: String,
-            required: [true, 'Excerpt is required'],
-            maxlength: [500, 'Excerpt cannot exceed 500 characters'],
-            trim: true,
+        tags: {
+            type: [String],
+            default: [],
         },
         content: {
             type: String,
@@ -116,7 +114,7 @@ newsSchema.virtual('categoryKeywords').get(function () {
 });
 
 // ── Indexes ───────────────────────────────────────────────────────────────────
-newsSchema.index({ 'category.bn': 'text', 'category.en': 'text', title: 'text', excerpt: 'text' });
+newsSchema.index({ 'category.bn': 'text', 'category.en': 'text', title: 'text', tags: 'text' });
 newsSchema.index({ isFeatured: 1, status: 1, createdAt: -1 });
 
 // ── Pre-save: auto-generate unique slug from title ────────────────────────────

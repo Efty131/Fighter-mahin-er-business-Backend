@@ -50,9 +50,7 @@ const corsOptions = {
       'http://localhost:4002',
       'https://big-time-frontend.vercel.app',           // Local backend direct access
       'https://fighter-mahin-er-business-backend.onrender.com', // Your Render backend URL
-      // ✅ ADD YOUR PRODUCTION FRONTEND DOMAIN HERE WHEN DEPLOYED:
-      // 'https://your-frontend-domain.com',
-      // 'https://your-academy.vercel.app',
+      'https://news-portal-frontend-seven.vercel.app',  // News portal frontend
     ];
     
     if (allowedOrigins.includes(origin)) {
