@@ -28,6 +28,7 @@ const articleRoutes    = require('./Routes/articleRoutes');
 const newsRoutes       = require('./Routes/newsRoutes');
 const uploadRoutes     = require('./Routes/uploadRoutes');
 const { protect, adminOnly } = require('./middleware/authMiddleware');
+const { connectGemini }     = require('./config/gemini');
 
 const app = express();
 const port = process.env.PORT || 4002;
@@ -37,6 +38,9 @@ connectDB();
 
 // ☁️ Cloudinary — must run after dotenv is loaded
 require('./config/cloudinary');
+
+// 🤖 Gemini AI — initialise globally so any controller can import getGeminiModel()
+connectGemini();
 
 // 🔥 CORS Configuration - FIXED for HTTP-only cookies + credentials
 const corsOptions = {
